@@ -1,7 +1,7 @@
 section .data
 	input_number dq -2.4e2
-	format db "%c%.12fx10^%lld", 10, 0  ;format for printing in base 10
-	num dq 1.0                          ;used later
+	format db "%c%.12fx10^%lld", 10, 0 ;format for printing in base 10
+	num dq 1.0
 
 	table   dq 0.5
                 dq 0.25
@@ -18,7 +18,7 @@ section .data
                 dq 0.0001220703125
                 dq 0.00006103515625
                 dq 0.000030517578125
-                dq 0.0000152587890625
+                dq 0.0000152587890625  ; 16th number
                 dq 0.00000762939453125
                 dq 0.000003814697265625
                 dq 0.0000019073486328125
@@ -73,7 +73,7 @@ _start:
 	MOV byte [rdi], '-'		;sign stored in SIGN
 
 .skip:
-	;now we get the exponent
+				       ;now we get the exponent
 	MOV rbx, [input_number]	       ;
 	SHR rbx, 52
 	AND rbx, 0b011111111111
@@ -82,23 +82,33 @@ _start:
 	IMUL rbx, 19728
 	SHR rbx, 16			;exponent stored in RBX
 
-        MOVQ xmm0, qword[table + 8]
+;	MOVSD xmm0, [num]
+;	MOV eax, 4
+;	LEA r8, [table + eax * 2]
+;        ADDSD xmm0, [r8]
 
-	MOVQ xmm0, qword [num]
-	XOR rcx, rcx
+;	MOVSD xmm0, [num]
+
 
 	MOV rax, qword[input_number]
-	AND rax, 0b0000000000001111111111111111111111111111111111111111111111111111
+	MOV rcx, 0x000FFFFFFFFFFFFF
+	AND rax, rcx
+	MOV rcx, 0x0010000000000000
+	OR rax, rcx
 
+	PXOR xmm0, xmm0
+
+	MOV rcx, 52
+	JMP .loop
 .loop:
-	BT rax, 0
-	JZ .next
-	ADDPD xmm0, qword[table + 8 * rcx]
+	BT rax, rcx
+	JNC .next
+
+	LEA r8, [table + rcx * 8]
+        ADDSD xmm0, [r8]
 
 .next:
-	ADD rcx, 1
-	SHR rax, 1
-	TEST rax, rax
+	SUB rcx,1
 	JNZ .loop
 
 
