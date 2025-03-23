@@ -1,10 +1,12 @@
 section .data
-	input_number dq -2.4e2
-	format db "%c%.12fx10^%lld", 10, 0 ;format for printing in base 10
+	input_number dq 0b1101100000001001001000011111101101010100010111010101111001110011
+
 	num dq 1.0
 
-	table   dq 0.5
-                dq 0.25
+	format db "%c%.12f", 10, 0
+
+	table   dq 0.5			;this is a look up table for 2^-(1 through 52) to calculate the mantissa quickly and efficiently
+             	dq 0.25
                 dq 0.125
                 dq 0.0625
                 dq 0.03125
@@ -18,7 +20,7 @@ section .data
                 dq 0.0001220703125
                 dq 0.00006103515625
                 dq 0.000030517578125
-                dq 0.0000152587890625  ; 16th number
+                dq 0.0000152587890625
                 dq 0.00000762939453125
                 dq 0.000003814697265625
                 dq 0.0000019073486328125
@@ -55,7 +57,6 @@ section .data
                 dq 0.00000000000000088817841970012523233890533447265625
                 dq 0.000000000000000444089209850062616169452667236328125	;52nd number
 
-
 section .bss
 	sign resb 1
 
@@ -63,70 +64,60 @@ section .text
 	global _start
 	extern printf
 
-
 _start:
-	;now we will extract the sign bit
-        LEA rdi, [sign]
-        MOV byte [rdi] , '+'
-	BT qword[input_number], 63    ;store in carry flag 1 if the 63rd (first bit) is 1, and remove the 1 and make it 0
-	JNC .skip
-	MOV byte [rdi], '-'		;sign stored in SIGN
+	;the input number will be in rax for all use
+	MOV rax, [input_number]
 
-.skip:
-				       ;now we get the exponent
-	MOV rbx, [input_number]	       ;
-	SHR rbx, 52
-	AND rbx, 0b011111111111
-	SUB rbx, 1023
+	;extract the sign bit
+	MOV byte [sign], '+'				;move the '+' sign as the default
+	BT rax, 63					;test the first bit in the input number
+	JNC .sign_done
+	MOV byte [sign], '-'
 
-	IMUL rbx, 19728
-	SHR rbx, 16			;exponent stored in RBX
+.sign_done:
+	;now lets extract the exponent
+	MOV r9, rax
+	SHR r9, 52					;mask the mantissa
+	AND r9, 0b011111111111				;mask the sign bit
+	SUB r9, 1023					;the exponent is now stored in r9
 
-;	MOVSD xmm0, [num]
-;	MOV eax, 4
-;	LEA r8, [table + eax * 2]
-;        ADDSD xmm0, [r8]
+	JMP .calculate_mantissa				;go to calculate the mantissa
 
-;	MOVSD xmm0, [num]
+.calculate_mantissa:
 
+	;mask mantissa
+	MOV rdx, 0x000FFFFFFFFFFFFF
+	AND rax, rdx
 
-	MOV rax, qword[input_number]
-	MOV rcx, 0x000FFFFFFFFFFFFF
-	AND rax, rcx
-	MOV rcx, 0x0010000000000000
-	OR rax, rcx
+	;initialize Xmm0
+	MOVSD xmm0, [num]
 
-	PXOR xmm0, xmm0
-
+	;loop
 	MOV rcx, 52
-	JMP .loop
-.loop:
-	BT rax, rcx
-	JNC .next
 
-	LEA r8, [table + rcx * 8]
-        ADDSD xmm0, [r8]
+.translate:
+	MOV rdx, rcx 					;rdx contains the value from table
+	SHL rdx, 3
+	MOVSD xmm1, qword [table + rdx]
+	TEST rax, 1					;if LSB == 1
+	JZ .skip_addition
+	ADDSD xmm0, xmm1
 
-.next:
-	SUB rcx,1
-	JNZ .loop
+.skip_addition:
+	SHR rax, 1					;shift to the next bit
+	DEC rcx
+	JNZ .translate					;loop if rcx != 0
 
-
-
-
-
-
-
-
-
-
-
-        MOV rdi, format
-	MOVZX rsi, byte [sign]
+.print_and_end:
+	;print
+	MOV rdi, format
+	MOVZX rsi, byte [sign]				;first arg: the sign
+;	MOV rdx, r9					;### arg: the exponent
+	MOVSD xmm1, xmm0
 	MOV rax, 1
-	MOV rdx ,rbx
-        CALL printf
+	CALL printf
 
-        XOR rdi, rdi  ; Exit status = 0 (success)
-        MOV rax, 60   ; Syscall number for exit
-        SYSCALL       ; Exit the program
+	;exit
+	MOV rax, 60
+	XOR rdi, rdi
+	SYSCALL
