@@ -7,6 +7,13 @@ ans = 0
 angle_type = 1
 help_tutorial =(
 """
+Constants:
+ans: previous answer
+PI:  pi
+E:   euler's number
+DEGREE_TO_RAD = multiply this to degrees to convert it to radians
+RAD_TO_DEGREE = multiply this to radians to convert it to degrees
+
 Functions:
 
 Basic:
@@ -261,7 +268,7 @@ def derivative(equation, point):
     return (a - b)/c
 
 def convert(s):
-    pattern = r'solve\(\s*(.+)\s* = \s*(.+)\s*,'
+    pattern = r'solve\(\s*(.+)\s*=\s*(.+)\s*,'
     replacement = r'solve("\1 + (-1 * \2)",'
     s = re.sub(pattern, replacement, s)
     return s
