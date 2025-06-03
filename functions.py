@@ -1,7 +1,42 @@
 #remember, type 1 is degrees and type 0 is radians
+import re
+import sys
+
+##################################################### Functionality ##############################################
+ans = 0
+angle_type = 1
+help_tutorial =(
+"""
+Functions:
+
+Basic:
+
+power(base, exponent)
+sqrt(base)
+absolute(number)
+
+Logarithmic and Exponential:
+
+exp(x) #e^x
+ln(x)
+log(base, value)
+
+Trignometry:
+
+sin(angle)  csc(angle)  arcsin(angle)
+cos(angle)  sec(angle)  arcos(angle)
+tan(angle)  cot(angle)  arcot(angle)
+
+Calculus:
+
+derivative( f(x) , point )
+integral( lower_limit, upper_limit, f(x) )
+solve( f(x) = g(x) , initial_guess )        #equation solver
+
+"""
+)
 
 ##################################################### LOOKUP TABLE ##############################################
-
 PI = 3.14159265359
 E = 2.7182818284590492
 DEGREE_TO_RAD = 0.01745329252
@@ -141,7 +176,7 @@ def log(base, value):
 
 ##################################################### TRIG ##############################################
 
-def sin(x, angle_type):
+def sin(x):
     if angle_type == 1 and x in (0, 30, 45, 60, 90):
         lookup = {0: 0, 30: 0.5, 45: 0.70710678118, 60: 0.86602540378, 90: 1}
         return lookup[x]
@@ -149,30 +184,30 @@ def sin(x, angle_type):
 
     return x - FN[2] * spow(x,3) + FN[4] * spow(x,5) - FN[6] * spow(x,7) + FN[8] * spow(x,9) - FN[10] * spow(x, 11) + FN[12] *spow(x,13) - FN[14] * spow(x, 15) + FN[16] *spow(x,17) - FN[18] *spow(x, 19) + FN[20] *spow(x,21) - FN[22] *spow(x, 23) 
 
-def cos(x, angle_type):
+def cos(x):
     if angle_type == 1 and x in (0, 30, 45, 60, 90):
         lookup = {0: 1, 30: 0.86602540378, 45: 0.70710678118, 60: 0.5, 90: 0}
         return lookup[x]
     x = normalize(x, angle_type)
     return 1 - FN[1] * spow(x,2) + FN[3] * spow(x,4) - FN[5] * spow(x,6) + FN[7] * spow(x,8) - FN[9] * spow(x, 10) + FN[11] *spow(x,12) - FN[13] * spow(x, 14) + FN[15] *spow(x,16) - FN[17] * spow(x, 18) + FN[19] *spow(x,20) - FN[21] * spow(x, 22) + FN[23] *spow(x,24)
 
-def tan(x, angle_type):
+def tan(x):
     if angle_type == 1 and x in (0, 30, 45, 60, 90):
         lookup = {0: 0, 30: 0.57735026919, 45: 1, 60: 1.73205080757, 90: float('infinite')}
         return lookup[x]
     x = normalize(x, angle_type)
     return sin(x, 0)/cos(x, 0)
 
-def sec(x, angle_type):
+def sec(x):
     return 1/sin(x, angle_type)
 
-def csc(x, angle_type):
+def csc(x):
     return 1/cos(x, angle_type)
 
-def cot(x, angle_type):
+def cot(x):
     return 1/cot(x, angle_type)
 
-def arcsin(n, angle_type):
+def arcsin(n):
     # The Newton - Raphson method for solving equations, where the equation will be sin(x) - n = 0
     x = 0.7071
     for _ in range(25):
@@ -183,10 +218,10 @@ def arcsin(n, angle_type):
         return x * RAD_TO_DEGREE
     return x
 
-def arcos(n, angle_type):
+def arcos(n):
     return PI / 2 - arcsin(n, angle_type)
 
-def arctan(n, angle_type):
+def arctan(n):
     x = 1.62
     for _ in range(25):
         factor = (tan(x, 0) - n) / spow(sec(x, 0), 2) 
@@ -225,11 +260,29 @@ def derivative(equation, point):
 
     return (a - b)/c
 
+def convert(s):
+    pattern = r'solve\(\s*(.+)\s* = \s*(.+)\s*,'
+    replacement = r'solve("\1 + (-1 * \2)",'
+    s = re.sub(pattern, replacement, s)
+    return s
+
 
 def main():
     while True:
-        first = eval(input("input: "))
-        print(round(first,  10))
+        user_input = convert(input("input: "))
+        if user_input == "deg":
+            angle_type = 1
+        elif user_input == "rad":
+            angle_type = 0
+        elif (user_input.lower() == "quit"):
+            sys.exit()
+
+        elif user_input.lower() == "help":
+            print(help_tutorial)
+        else:
+            user_input = eval(user_input)
+            ans = user_input
+            print(round(user_input,  10))
 
 if __name__ == "__main__":
     main()
